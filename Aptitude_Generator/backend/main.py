@@ -206,7 +206,7 @@ async def send_assessment(request: EmailRequest, background_tasks: BackgroundTas
                 if request.mcq_count > 0: format_info += f"<li><strong>Aptitude:</strong> {request.mcq_count} MCQs</li>"
                 if request.coding_count > 0: format_info += f"<li><strong>Coding:</strong> {request.coding_count} DSA Questions</li>"
 
-                for cand in request.candidates:
+                for i, cand in enumerate(request.candidates):
                     email = cand.email
                     subject = f"Career Opportunity | {clean_title} Technical Evaluation"
                     body = f"""
@@ -238,6 +238,10 @@ async def send_assessment(request: EmailRequest, background_tasks: BackgroundTas
                     # Adding No-Reply Header for Gmail API if supported by service, 
                     # else instructions in body are the standard way.
                     gmail_oauth_service.send_email(company_id, email, subject, body)
+                    print(f"  ✅ Assessment email sent to {email} ({i+1}/{len(request.candidates)})")
+                    # Delay between emails to avoid Gmail API rate limiting (429 error)
+                    if i < len(request.candidates) - 1:
+                        time.sleep(5)
                 is_sent = True
         except Exception as oauth_e:
             print(f"⚠️ Gmail OAuth Send failed or not connected: {oauth_e}. Falling back to SMTP...")
@@ -263,7 +267,7 @@ async def send_assessment(request: EmailRequest, background_tasks: BackgroundTas
                 clean_title = clean_job_title(request.job_title)
 
                 # ... SMTP Sending Logic ...
-                for cand in request.candidates:
+                for i, cand in enumerate(request.candidates):
                     email = cand.email
                     msg = MIMEMultipart()
                     msg['From'] = str(smtp_user or "")
@@ -273,6 +277,9 @@ async def send_assessment(request: EmailRequest, background_tasks: BackgroundTas
                     body = f"Technical assessment link for {cand.name}: {request.assessment_link}\n\nCareer Opportunity for {clean_title}.\n\nThis is an automated email. Please do not reply."
                     msg.attach(MIMEText(body, 'plain'))
                     server.send_message(msg)
+                    # Delay between emails to avoid rate limiting
+                    if i < len(request.candidates) - 1:
+                        time.sleep(5)
                 server.quit()
             except Exception as smtp_err:
                 print(f"SMTP Error: {smtp_err}")
@@ -306,7 +313,7 @@ async def send_rejection(request: RejectionRequest):
                 
                 clean_title = clean_job_title(request.job_title)
                 
-                for email in request.emails:
+                for i, email in enumerate(request.emails):
                     subject = f"Update on your application for {clean_title}"
                     body = f"""
                     <html>
@@ -324,6 +331,10 @@ async def send_rejection(request: RejectionRequest):
                     </html>
                     """
                     gmail_oauth_service.send_email(company_id, email, subject, body)
+                    print(f"  ✅ Rejection email sent to {email} ({i+1}/{len(request.emails)})")
+                    # Delay between emails to avoid Gmail API rate limiting (429 error)
+                    if i < len(request.emails) - 1:
+                        time.sleep(5)
                 is_sent = True
         except Exception as oauth_e:
             print(f"⚠️ Gmail OAuth Rejection failed: {oauth_e}")
@@ -343,7 +354,7 @@ async def send_rejection(request: RejectionRequest):
             server.login(str(smtp_user or ""), str(smtp_password or ""))
             
             clean_title = clean_job_title(request.job_title)
-            for email in request.emails:
+            for i, email in enumerate(request.emails):
                 msg = MIMEMultipart()
                 msg['From'] = str(smtp_user or "")
                 msg['To'] = str(email or "")
@@ -351,6 +362,9 @@ async def send_rejection(request: RejectionRequest):
                 body_text = f"Dear Candidate,\n\nThank you for applying for the {clean_title} position. After reviewing your profile, we have decided to proceed with other candidates.\n\nBest Regards,\nRecruitAI Team"
                 msg.attach(MIMEText(body_text, 'plain'))
                 server.send_message(msg)
+                # Delay between emails to avoid rate limiting
+                if i < len(request.emails) - 1:
+                    time.sleep(5)
             server.quit()
 
         return {"status": "success", "message": f"Sent rejection to {len(request.emails)} candidates"}
@@ -482,7 +496,7 @@ async def schedule_interview(request: ScheduleInterviewRequest):
         if gmail_oauth_service.is_connected(company_id):
             clean_title = clean_job_title(request.job_title)
             
-            for email in request.emails:
+            for i, email in enumerate(request.emails):
                 subject = f"Interview Invitation: {clean_title} Role"
                 body = f"""
                 <html>
@@ -507,6 +521,10 @@ async def schedule_interview(request: ScheduleInterviewRequest):
                 </html>
                 """
                 gmail_oauth_service.send_email(company_id, email, subject, body)
+                print(f"  ✅ Interview email sent to {email} ({i+1}/{len(request.emails)})")
+                # Delay between emails to avoid Gmail API rate limiting (429 error)
+                if i < len(request.emails) - 1:
+                    time.sleep(5)
             is_sent = True
         
         if not is_sent:
@@ -522,7 +540,7 @@ async def schedule_interview(request: ScheduleInterviewRequest):
             
             clean_title = clean_job_title(request.job_title)
             
-            for email in request.emails:
+            for i, email in enumerate(request.emails):
                 msg = MIMEMultipart()
                 msg['From'] = str(smtp_user or "")
                 msg['To'] = str(email or "")
@@ -531,6 +549,9 @@ async def schedule_interview(request: ScheduleInterviewRequest):
                 body_text = f"Your offline interview for {clean_title} is scheduled on {request.date} at {request.time} at {request.location}.\n\nBest Regards,\n{request.company_name}\nRecruitAI\n\n(Auto-generated email - Do not reply)"
                 msg.attach(MIMEText(body_text, 'plain'))
                 server.send_message(msg)
+                # Delay between emails to avoid rate limiting
+                if i < len(request.emails) - 1:
+                    time.sleep(5)
             server.quit()
 
         return {"status": "success", "message": "Interview invitations sent successfully"}
