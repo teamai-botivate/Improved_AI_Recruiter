@@ -842,10 +842,13 @@ if (rejectProceedBtn) {
             const emails = rejectedList.map(c => c.email).filter(e => e);
 
             if (emails.length > 0) {
+                // Get the actual job title from the rejected candidates data
+                const actualJobTitle = rejectedList[0]?.role || 'the position';
+                
                 const sendResp = await fetch(`${window.location.origin}/aptitude-api/send-rejection`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ emails: emails, job_title: "Applicant" })
+                    body: JSON.stringify({ emails: emails, job_title: actualJobTitle })
                 });
                 
                 if (!sendResp.ok) {
