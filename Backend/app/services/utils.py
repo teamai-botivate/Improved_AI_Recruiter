@@ -1,6 +1,7 @@
 
 import re
 import spacy
+import sys
 from typing import Set, Tuple
 import subprocess
 
@@ -8,8 +9,24 @@ try:
     nlp = spacy.load("en_core_web_sm")
 except OSError:
     print("Downloading Spacy Model 'en_core_web_sm'...")
-    subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"])
-    nlp = spacy.load("en_core_web_sm")
+    try:
+        # 1. Try via sys.executable (standard)
+        subprocess.run([sys.executable, "-m", "spacy", "download", "en_core_web_sm"], check=True)
+        nlp = spacy.load("en_core_web_sm")
+    except Exception:
+        try:
+            # 2. Try direct spacy command (for uv/standalone environments)
+            subprocess.run(["spacy", "download", "en_core_web_sm"], check=True)
+            nlp = spacy.load("en_core_web_sm")
+        except Exception:
+            print("❌ Error: Could not download Spacy model automatically.")
+            print("💡 FIX: Run this command manually in your terminal:")
+            print("uv pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl")
+            
+            # Fallback to prevent crash, but show clear error when used
+            def nlp_fallback(*args, **kwargs):
+                raise RuntimeError("Spacy model 'en_core_web_sm' is missing. Please run the install command provided above.")
+            nlp = nlp_fallback
 
 def clean_text(text: str) -> str:
     """Sanitize resume text."""

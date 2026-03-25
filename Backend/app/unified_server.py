@@ -103,7 +103,15 @@ async def debug_gmail_url(request: Request):
     
     # Construction logic
     auto_url = f"{proto}://{host}".rstrip('/')
-    env_url = base_url_env.replace("http://", "https://").rstrip('/') if base_url_env else None
+    
+    # Logic: Only force https if NOT on localhost/127.0.0.1
+    if base_url_env:
+        if "localhost" in base_url_env or "127.0.0.1" in base_url_env:
+            env_url = base_url_env.rstrip('/')
+        else:
+            env_url = base_url_env.replace("http://", "https://").rstrip('/')
+    else:
+        env_url = None
     
     # Hugging Face Space fallback
     hf_url = f"https://{os.getenv('SPACE_ID').replace('/', '-')}.hf.space" if os.getenv('SPACE_ID') else None
@@ -137,13 +145,24 @@ async def start_gmail_oauth(request: Request, company_id: str = Query(default="d
         space_id = os.getenv("SPACE_ID")
         
         if base_url_env:
-            base_url = base_url_env.replace("http://", "https://").rstrip('/')
+            # Logic: Only force https if NOT on localhost/127.0.0.1
+            if "localhost" in base_url_env or "127.0.0.1" in base_url_env:
+                base_url = base_url_env.rstrip('/')
+            else:
+                base_url = base_url_env.replace("http://", "https://").rstrip('/')
         elif space_id:
             # Automatic HF Space URL
             base_url = f"https://{space_id.replace('/', '-')}.hf.space"
         else:
-            proto = request.headers.get("x-forwarded-proto", "https")
-            host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+            # Fallback to header detection
+            host = request.headers.get("x-forwarded-host") or request.headers.get("host") or "localhost:8000"
+            
+            # Use http for localhost, https for others by default
+            if "localhost" in host or "127.0.0.1" in host:
+                proto = "http"
+            else:
+                proto = request.headers.get("x-forwarded-proto", "https")
+                
             base_url = f"{proto}://{host}".rstrip('/')
             
         redirect_uri = f"{base_url}/auth/gmail/callback"
